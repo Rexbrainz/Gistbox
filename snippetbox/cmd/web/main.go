@@ -1,26 +1,35 @@
 package main
 
 import (
-	"log"
+	"flag"
+	"log/slog"
 	"net/http"
+	"os"
 )
 
+type application struct {
+	logger *slog.Logger
+}
+
 func main() {
-	mux := http.NewServeMux()
+	// Define a command-line flag with the name 'addr'
+	// with a default value of :4000
+	addr := flag.String("addr", ":4000", "HTTP network address")
+	
+	// Important to use the flag.Parse() to parse the command-line flag
+	flag.Parse()
 
-	fileServer := http.FileServer(http.Dir("./ui/static/"))
+	// Use the slog.New to init a new structured logger, which
+	// writes to stdout stream and uses the default settings.
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	// Use mux.Handle to register file server as the handler
-	// for all URL paths that start with /static/
-	mux.Handle("GET /static/", http.StripPrefix("/static", fileServer))
+	app := &application {
+		logger: logger,
+	}
 
-	// Register other application routes as normal
-	mux.HandleFunc("GET /{$}", home)
-	mux.HandleFunc("GET /snippet/view/{id}", snippetView)
-	mux.HandleFunc("GET /snippet/create", snippetCreate)
-	mux.HandleFunc("POST /snippet/create", snippetCreatePost)
+	logger.Info("starting server", "addr", *addr)
 
-	log.Print("starting server on :4000")
-	err := http.ListenAndServe(":4000", mux)
-	log.Fatal(err)
+	err := http.ListenAndServe(*addr, app.routes())
+	logger.Error(err.Error())
+	os.Exit(1)
 }

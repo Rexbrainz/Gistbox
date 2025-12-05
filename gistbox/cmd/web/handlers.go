@@ -2,14 +2,27 @@ package main
 
 import (
 	"fmt"
-	"html/template"
+	//"html/template"
 	"net/http"
 	"strconv"
+	"errors"
+	"snippetbox-webapp/internal/models"
 )
 
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Server", "Go")
 
+	gists, err := app.gists.Latest()
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	for _, gist := range gists {
+		fmt.Fprintf(w, "%+v\n", gist)
+	}
+
+	/*
 	files := []string{
 		"./ui/html/base.tmpl",
 		"./ui/html/pages/home.tmpl",
@@ -28,6 +41,7 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 		app.logger.Error(err.Error(), "method", r.Method, "uri", r.URL.RequestURI())
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
+	*/
 }
 
 func (app *application) gistView(w http.ResponseWriter, r *http.Request) {
@@ -36,7 +50,19 @@ func (app *application) gistView(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	fmt.Fprintf(w, "Display a specific gist with ID %d...\n", id)
+
+	gist, err := app.gists.Get(id)
+	if err != nil {
+		if errors.Is(err, models.ErrNoRecord) {
+			http.NotFound(w, r) // 404 NotFound error 
+		} else {
+			app.serverError(w, r, err)
+		}
+		return
+	}
+
+	// Written as a plain text HTTP response body.
+	fmt.Fprintf(w, "%v", gist)
 }
 
 func (app *application) gistCreate(w http.ResponseWriter, r *http.Request) {

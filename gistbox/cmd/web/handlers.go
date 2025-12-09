@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	//"html/template"
+	"html/template"
 	"net/http"
 	"strconv"
 	"errors"
+
 	"snippetbox-webapp/internal/models"
 )
 
@@ -18,30 +19,27 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, gist := range gists {
-		fmt.Fprintf(w, "%+v\n", gist)
-	}
-
-	/*
 	files := []string{
 		"./ui/html/base.tmpl",
-		"./ui/html/pages/home.tmpl",
 		"./ui/html/partials/nav.tmpl",
+		"./ui/html/pages/home.tmpl",
 	}
 
 	ts, err := template.ParseFiles(files...)
 	if err != nil {
-		app.logger.Error(err.Error(), "method", r.Method, "uri", r.URL.RequestURI())
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		app.serverError(w, r, err)
 		return
 	}
 
-	err = ts.ExecuteTemplate(w, "base", nil)
-	if err != nil {
-		app.logger.Error(err.Error(), "method", r.Method, "uri", r.URL.RequestURI())
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	// Create an instance of a templateData struct holding the slice of gists.
+	data := templateData{
+		Gists: gists,
 	}
-	*/
+	
+	err = ts.ExecuteTemplate(w, "base", data)
+	if err != nil {
+		app.serverError(w, r, err)
+	}
 }
 
 func (app *application) gistView(w http.ResponseWriter, r *http.Request) {
@@ -61,8 +59,29 @@ func (app *application) gistView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Written as a plain text HTTP response body.
-	fmt.Fprintf(w, "%v", gist)
+	// Initiliaze a slice containing the paths to the view.tmpl file,
+	// plus the base layout and navigation partial that we made earlier.
+	files := []string{
+		"./ui/html/base.tmpl",
+		"./ui/html/partials/nav.tmpl",
+		"./ui/html/pages/view.tmpl",
+	}
+// Parse the template files.
+	ts, err := template.ParseFiles(files...)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	// Create an instance of a templateData struct holding the snippet data.
+	data := templateData{
+		Gist: gist,
+	}
+
+	err = ts.ExecuteTemplate(w, "base", data)
+	if err != nil {
+		app.serverError(w, r, err)
+	}
 }
 
 func (app *application) gistCreate(w http.ResponseWriter, r *http.Request) {

@@ -6,15 +6,16 @@ import (
 	"net/http"
 	"os"
 	"database/sql"
+	"html/template"
 
 	"snippetbox-webapp/internal/models"
-
 	_ "github.com/go-sql-driver/mysql"
 )
 
 type application struct {
-	logger 	*slog.Logger
-	gists		*models.GistModel
+	logger 				*slog.Logger
+	gists					*models.GistModel
+	templateCache	map[string]*template.Template
 }
 
 func main() {
@@ -38,9 +39,18 @@ func main() {
 
 	defer db.Close()
 
+	// Initialize a new template cache
+	templateCache, err := newTemplateCache()
+	if err != nil {
+		logger.Error(err.Error())
+		os.Exit(1)
+	}
+
+	// And add it to the application dependencies.
 	app := &application {
-		logger: logger,
-		gists: 	&models.GistModel{DB: db},
+		logger: 				logger,
+		gists: 					&models.GistModel{DB: db},
+		templateCache:	templateCache,
 	}
 
 	logger.Info("starting server", "addr", *addr)

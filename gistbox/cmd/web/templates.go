@@ -16,6 +16,7 @@ type templateData struct {
 	CurrentYear int
 	Gist 				models.Gist
 	Gists 			[]models.Gist
+	Form				any // for validation errors and repopulating submited data in the form
 }
 
 func humanDate(t time.Time) string {

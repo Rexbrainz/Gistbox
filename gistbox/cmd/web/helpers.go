@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+	"errors"
+
+	"github.com/go-playground/form/v4"
 )
 
 func (app *application) serverError(w http.ResponseWriter, r *http.Request, err error) {
@@ -46,7 +49,7 @@ func (app *application) render(w http.ResponseWriter, r *http.Request, status in
 		return
 	}
 
-	// If the template is written to the bufer without any errors, we are safe
+	// If the template is written to the buffer without any errors, we are safe
 	// to go ahead and write the HTTP status code to http.ResponseWriter.
 	w.WriteHeader(status)
 
@@ -57,4 +60,24 @@ func (app *application) newTemplateData(r *http.Request) templateData {
 	return templateData{
 		CurrentYear: time.Now().Year(),
 	}
+}
+
+// decodePostForm() decodes a request body into dst.
+func (app *application) decodePostForm(r *http.Request, dst any) error {
+	err := r.ParseForm()
+	if err != nil {
+		return err
+	}
+
+	err = app.formDecoder.Decode(dst, r.PostForm)
+	if err != nil {
+		var invalidDecoderError *form.invalidDecoderError
+
+		if errors.As(err, &invalidDecderError) {
+			panic(err)
+		}
+
+		return err
+	}
+	return nil
 }

@@ -15,7 +15,7 @@ type gistCreateForm struct {
 	Title								string `form:"title"`
 	Content							string `form:"content"`
 	Expires							int		 `form:"expires"`
-	validator.Validator		'form:"-"' // Embeded (means gistCreateForm inherits all the fields and methods
+	validator.Validator		`form:"-"` // Embeded (means gistCreateForm inherits all the fields and methods
 																	// of our Validator struct).
 }
 

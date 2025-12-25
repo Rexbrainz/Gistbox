@@ -7,18 +7,22 @@ import (
 	"os"
 	"database/sql"
 	"html/template"
+	"time"
 
 	"snippetbox-webapp/internal/models"
 
+	"github.com/alexedwards/scs/mysqlstore"
+	"github.com/alexedwards/scs/v2"
 	"github.com/go-playground/form/v4"
 	_ "github.com/go-sql-driver/mysql"
 )
 
 type application struct {
-	logger 				*slog.Logger
-	gists					*models.GistModel
-	templateCache	map[string]*template.Template
-	formDecoder		*form.Decoder
+	logger 					*slog.Logger
+	gists						*models.GistModel
+	templateCache		map[string]*template.Template
+	formDecoder			*form.Decoder
+	sessionManager	*scs.SessionManager
 }
 
 func main() {
@@ -51,6 +55,12 @@ func main() {
 
 	formDecoder := form.NewDecoder()
 
+	// Initialize a New session Managager. Then configure it to use
+	// the Mysql database as session store.
+	// set a lifetime of 12 hours (sessions expire in 12 hours after being created)
+	sessionManager := scs.New()
+	sessionManager.Store = mysqlstore.New(db)
+	sessionManager.Lifetime = 12 * time.Hour
 
 	// And add it to the application dependencies.
 	app := &application {
@@ -58,6 +68,7 @@ func main() {
 		gists: 					&models.GistModel{DB: db},
 		templateCache:	templateCache,
 		formDecoder:		formDecoder,
+		sessionManager:	sessionManager,
 	}
 
 	logger.Info("starting server", "addr", *addr)

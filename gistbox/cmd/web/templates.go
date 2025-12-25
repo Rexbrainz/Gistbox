@@ -17,6 +17,7 @@ type templateData struct {
 	Gist 				models.Gist
 	Gists 			[]models.Gist
 	Form				any // for validation errors and repopulating submited data in the form
+	Flash				string
 }
 
 func humanDate(t time.Time) string {

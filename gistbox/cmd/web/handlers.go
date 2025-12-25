@@ -52,6 +52,7 @@ func (app *application) gistView(w http.ResponseWriter, r *http.Request) {
 
 	data := app.newTemplateData(r)
 	data.Gist = gist
+
 	app.render(w, r, http.StatusOK, "view.tmpl", data)
 }
 
@@ -90,6 +91,10 @@ func (app *application) gistCreatePost(w http.ResponseWriter, r *http.Request) {
 		app.serverError(w, r, err)
 		return
 	}
+
+	// Use the Put() method to add a string value and the corresponding key
+	// to the session data.
+	app.sessionManager.Put(r.Context(), "flash", "Gist successfully created!")
 
 	// Redirect the user to the relevant page to view the gist.
 	http.Redirect(w, r, fmt.Sprintf("/gist/view/%d", id), http.StatusSeeOther)

@@ -2,18 +2,18 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
-	"errors"
 
 	"github.com/go-playground/form/v4"
 )
 
 func (app *application) serverError(w http.ResponseWriter, r *http.Request, err error) {
 	var (
-		method	= r.Method
-		uri 	= r.URL.RequestURI()
+		method = r.Method
+		uri    = r.URL.RequestURI()
 	)
 
 	app.logger.Error(err.Error(), "method", method, "uri", uri)
@@ -27,7 +27,7 @@ func (app *application) clientError(w http.ResponseWriter, status int) {
 func (app *application) render(w http.ResponseWriter, r *http.Request, status int, page string, data templateData) {
 	// Retrieve the appropriate template set from the cache based on the page
 	// name (like 'home.tmpl'). If no entry exists in the cache with the
-	// provided name, then create a new error and call the serverError() helper 
+	// provided name, then create a new error and call the serverError() helper
 	// method that we made earlier and return.
 	ts, ok := app.templateCache[page]
 	if !ok {
@@ -60,7 +60,7 @@ func (app *application) newTemplateData(r *http.Request) templateData {
 	return templateData{
 		CurrentYear: time.Now().Year(),
 		// Add the flash message to the template data, if one exists.
-		Flash:				app.sessionManager.PopString(r.Context(), "flash"),
+		Flash: app.sessionManager.PopString(r.Context(), "flash"),
 	}
 }
 
@@ -83,4 +83,3 @@ func (app *application) decodePostForm(r *http.Request, dst any) error {
 	}
 	return nil
 }
-

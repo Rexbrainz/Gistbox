@@ -19,11 +19,12 @@ import (
 )
 
 type application struct {
-	logger         *slog.Logger
-	gists          *models.GistModel
-	templateCache  map[string]*template.Template
-	formDecoder    *form.Decoder
-	sessionManager *scs.SessionManager
+	logger         	*slog.Logger
+	gists          	*models.GistModel
+	users			*models.UserModel
+	templateCache	map[string]*template.Template
+	formDecoder    	*form.Decoder
+	sessionManager 	*scs.SessionManager
 }
 
 func main() {
@@ -69,7 +70,9 @@ func main() {
 	// And add it to the application dependencies.
 	app := &application{
 		logger:         logger,
+		// Initialize the models instances with the db.
 		gists:          &models.GistModel{DB: db},
+		users:			&models.UserModel{DB: db},
 		templateCache:  templateCache,
 		formDecoder:    formDecoder,
 		sessionManager: sessionManager,

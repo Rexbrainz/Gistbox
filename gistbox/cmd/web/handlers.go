@@ -1,22 +1,31 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
-	"errors"
 
 	"snippetbox-webapp/internal/models"
 	"snippetbox-webapp/internal/validator"
 )
 
-
 type gistCreateForm struct {
-	Title								string `form:"title"`
-	Content							string `form:"content"`
-	Expires							int		 `form:"expires"`
-	validator.Validator		`form:"-"` // Embeded (means gistCreateForm inherits all the fields and methods
-																	// of our Validator struct).
+	Title               string     `form:"title"`
+	Content             string     `form:"content"`
+	Expires             int        `form:"expires"`
+	validator.Validator `form:"-"` // Embeded (means gistCreateForm inherits all the fields and methods
+	// of our Validator struct).
+}
+
+// Create a new userSignupForm struct
+// which will represent and hold the form data
+// and hook it up to the userSignup handler.
+type userSignupForm struct {
+	Name                string `form:"name"`
+	Email               string `form:"email"`
+	Password            string `form:"password"`
+	validator.Validator `form:"-"`
 }
 
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
@@ -31,7 +40,6 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 
 	app.render(w, r, http.StatusOK, "home.tmpl", data)
 }
-	
 
 func (app *application) gistView(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
@@ -43,7 +51,7 @@ func (app *application) gistView(w http.ResponseWriter, r *http.Request) {
 	gist, err := app.gists.Get(id)
 	if err != nil {
 		if errors.Is(err, models.ErrNoRecord) {
-			http.NotFound(w, r) // 404 NotFound error 
+			http.NotFound(w, r) // 404 NotFound error
 		} else {
 			app.serverError(w, r, err)
 		}
@@ -78,7 +86,7 @@ func (app *application) gistCreatePost(w http.ResponseWriter, r *http.Request) {
 	form.CheckField(validator.MaxChars(form.Title, 100), "title", "This field cannot be more than 100 characters long")
 	form.CheckField(validator.NotBlank(form.Content), "content", "This field cannot be blank")
 	form.CheckField(validator.PermittedValue(form.Expires, 1, 7, 365), "expires", "This field must equal 1, 7 or 365")
-	
+
 	if !form.Valid() {
 		data := app.newTemplateData(r)
 		data.Form = form
@@ -98,4 +106,69 @@ func (app *application) gistCreatePost(w http.ResponseWriter, r *http.Request) {
 
 	// Redirect the user to the relevant page to view the gist.
 	http.Redirect(w, r, fmt.Sprintf("/gist/view/%d", id), http.StatusSeeOther)
+}
+
+func (app *application) userSignup(w http.ResponseWriter, r *http.Request) {
+	data := app.newTemplateData(r)
+	data.Form = userSignupForm{}
+	app.render(w, r, http.StatusOK, "signup.tmpl", data)
+}
+
+func (app *application) userSignupPost(w http.ResponseWriter, r *http.Request) {
+	// Declare a zero-valued intstance of our userSignupForm struct
+	var form userSignupForm
+
+	// Parse the form data into the userSignupForm struct
+	if err := app.decodePostForm(r, &form); err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	// Validate the form contents using our helper functions.
+	form.CheckField(validator.NotBlank(form.Name), "name", "This field cannot be blank")
+	form.CheckField(validator.NotBlank(form.Email), "email", "This field cannot be blank")
+	form.CheckField(validator.Matches(form.Email, validator.EmailRX), "email", "This field must be a valid email address")
+	form.CheckField(validator.NotBlank(form.Password), "password", "This field cannot be blank")
+	form.CheckField(validator.MinChars(form.Password, 8), "password", "This field must be at least 8 characters long")
+
+	// If there are any errors, redisplay the signup form along with a 422 status code
+	if !form.Valid() {
+		data := app.newTemplateData(r)
+		data.Form = form
+		app.render(w, r, http.StatusUnprocessableEntity, "signup.tmpl", data)
+		return
+	}
+
+	// Try to create a new user record in the database.
+	// If the email already exists then add an error message to the form
+	// and redisplay it.
+	err := app.users.Insert(form.Name, form.Email, form.Password)
+	if err != nil {
+		if errors.Is(err, models.ErrDuplicateEmail) {
+			form.AddFieldError("email", "Email address is already in use")
+
+			data := app.newTemplateData(r)
+			data.Form = form
+			app.render(w, r, http.StatusUnprocessableEntity, "signup.tmpl", data)
+		} else {
+			app.serverError(w, r, err)
+		}
+
+		return
+	}
+
+	app.sessionManager.Put(r.Context(), "flash", "Your signup was successful. Please log in.")
+	http.Redirect(w, r, "/user/login", http.StatusSeeOther)
+}
+
+func (app *application) userLogin(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, "Display a form for loggin in a user...")
+}
+
+func (app *application) userLoginPost(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, "Authenticate and login the user...")
+}
+
+func (app *application) userLogoutPost(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, "Logout the user...")
 }

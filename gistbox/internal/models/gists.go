@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// A Gist struct type to hold data for a specific gist
 type Gist struct {
 	ID 			int
 	Title		string

@@ -8,6 +8,8 @@ Gistbox is a small, server-rendered web app for creating and viewing short text 
 - Server-rendered HTML with cached templates, human-friendly dates, and a minimal CSS/JS theme.
 - CSRF tokens plus secure session cookies (HTTPS-only) on all dynamic routes.
 - Middleware covers panic recovery, structured request logging, security headers, and authentication gates.
+- Uses request context to mark authenticated users and pass flags into templates.
+- Static assets and templates are embedded; the binary serves from the embedded FS.
 
 ## Why it exists
 - Practice the full request/response stack without heavy frameworks.
@@ -21,6 +23,7 @@ Gistbox is a small, server-rendered web app for creating and viewing short text 
 - Form decoding via `github.com/go-playground/form/v4`
 - Middleware chaining via `github.com/justinas/alice`
 - CSRF protection via `github.com/justinas/nosurf`
+- Embedded templates/static via Go `embed` + `http.FileServerFS` + `template.ParseFS`
 
 ## How to run locally (quick path)
 Prereqs: Go (module currently targets Go 1.25), a MySQL instance, and a way to generate local TLS certs (e.g. OpenSSL or mkcert).

@@ -1,89 +1,74 @@
-# Gistbox (Go Webapp)
-Gistbox is a minimal web application built as a first backend-engineering project to learn how backend development works in Go and to prepare for backend job opportunities. The primary goal of this project is to demonstrate practical backend skills: routing, templates, request context, embedding static assets, simple persistence, and basic auth patterns.
+# Gistbox
 
-Signed up and logged in Users can create short code snippets (gists) that other users can view. There are no interactions on gists (likes, comments) in this iteration— the focus is on backend fundamentals and clear, maintainable server-side code.
+Gistbox is a small, server-rendered web app for creating and viewing short text snippets that auto-expire. It is a learning project focused on backend wiring in Go rather than product polish.
 
-Let's go by Alex Edwards was the resource used in learning and building of this app.
+## What it does now
+- Sign up or log in, then create a gist with title, body, and expiry (1/7/365 days) and get a flash confirmation.
+- List the 10 most recent, non-expired gists and view a single gist.
+- Server-rendered HTML with cached templates, human-friendly dates, and a minimal CSS/JS theme.
+- CSRF tokens plus secure session cookies (HTTPS-only) on all dynamic routes.
+- Middleware covers panic recovery, structured request logging, security headers, and authentication gates.
+- Uses request context to mark authenticated users and pass flags into templates.
+- Static assets and templates are embedded; the binary serves from the embedded FS.
 
-## Requirements
+## Why it exists
+- Practice the full request/response stack without heavy frameworks.
+- Explore middleware chaining, validation, sessions/flash messages, and DB-backed persistence.
+- Keep scope small (gists + expiry) to emphasize backend fundamentals.
 
-- Go 1.16+ (required for `embed`; newer Go versions recommended)
-- Git
+## Stack
+- Go (standard library `net/http`, `html/template`, `log/slog`, `database/sql`)
+- MySQL for persistence
+- Sessions & flash messages via `github.com/alexedwards/scs` + `mysqlstore`
+- Form decoding via `github.com/go-playground/form/v4`
+- Middleware chaining via `github.com/justinas/alice`
+- CSRF protection via `github.com/justinas/nosurf`
+- Embedded templates/static via Go `embed` + `http.FileServerFS` + `template.ParseFS`
 
-## Project layout
+## How to run locally (quick path)
+Prereqs: Go (module currently targets Go 1.25), a MySQL instance, and a way to generate local TLS certs (e.g. OpenSSL or mkcert).
 
-- `cmd/web/` - application entrypoint and HTTP handlers
-- `internal/models/` - application models
-- `ui/html/` - HTML templates (embedded)
-- `ui/static/` - static assets (embedded)
-- `tls/` - TLS cert/key for HTTPS (local certs)
+1) Clone and install deps:
+```bash
+git clone <repo-url>
+cd Go-Webapp/gistbox
+go mod download
+```
 
-## Build & Run
+2) Create the MySQL schema (gists, users, sessions) using the statements in `docs/setup.md`:
+```bash
+mysql -u <user> -p   # then paste the SQL from docs/setup.md
+```
 
-Important: the current code starts an HTTPS server unconditionally using `server.ListenAndServeTLS("./tls/cert.pem", "./tls/key.pem")`. That means the process expects a certificate and key at `./tls/cert.pem` and `./tls/key.pem` and will fail to start if they are missing.
-
-Run with HTTPS (recommended / current default):
-
+3) Generate local TLS certs at `./tls/cert.pem` and `./tls/key.pem` (self-signed example):
 ```bash
 mkdir -p tls
-openssl req -x509 -newkey rsa:4096 -nodes -keyout tls/key.pem -out tls/cert.pem -days 365 -subj "/CN=localhost"
-go run ./cmd/web
+openssl req -x509 -newkey rsa:2048 -nodes -keyout tls/key.pem -out tls/cert.pem -days 365 -subj "/CN=localhost"
 ```
 
-Build and run the binary (HTTPS):
-
+4) Run the server (point `-dsn` to your MySQL):
 ```bash
-go build -o bin/web ./cmd/web
-./bin/web
+go run ./cmd/web \
+  -addr=":4000" \
+  -dsn="user:pass@tcp(localhost:3306)/gistbox?parseTime=true"
 ```
+Then visit https://localhost:4000 and accept the self-signed cert. See `docs/setup.md` for schema and session-store tables.
 
-Core features
+## Review highlights
+- Expiry is enforced in queries (expired gists are filtered).
+- Template caching keeps rendering fast; helpers format dates.
+- Sessions carry one-time flash messages after writes; auth state is session-backed.
+- Middleware covers recovery, logging, security headers, CSRF tokens, and HTTPS-only cookies.
 
-- Create and view short code snippets (gists). No likes/comments/profiles in this version — focus is backend behavior.
-- Server-side templates, embedded static assets, simple persistence, authentication and authorization, and session-based auth.
+## Roadmap
+- Short term: finish user flows (logout UX, account checks), add edit/delete, better validation, and pagination/search.
+- Later: syntax highlighting, Docker/CI, and automated tests for handlers/middleware.
 
-Requirements
+## Repository layout
+- `cmd/web` — HTTP handlers, middleware, routing, template rendering, and program entrypoint.
+- `internal/models` — MySQL-backed data access for gists and shared errors.
+- `internal/validator` — Small validation helper used by form bindings.
+- `ui` — HTML templates, CSS/JS, and static assets.
 
-- Go 1.16+ (for `embed` support)
-- A MySQL instance for development (see `cmd/web/main.go` DSN)
-
-Quick start (HTTPS — current behavior)
-
-The code currently starts an HTTPS server using `server.ListenAndServeTLS("./tls/cert.pem", "./tls/key.pem")`. Provide a self-signed certificate pair in a `tls/` directory before running:
-
-```bash
-mkdir -p tls
-openssl req -x509 -newkey rsa:4096 -nodes -keyout tls/key.pem -out tls/cert.pem -days 365 -subj "/CN=localhost"
-go run ./cmd/web
-```
-
-Build and run the binary:
-
-```bash
-go build -o bin/web ./cmd/web
-./bin/web
-```
-
-If you prefer to run without TLS for local testing, edit `cmd/web/main.go` to use `server.ListenAndServe()` and set `sessionManager.Cookie.Secure = false` (cookies require `Secure=true` for HTTPS).
-
-Embedding & templates
-
-Templates and static files are embedded via the `ui` package (`ui/efs.go`). The template cache uses `fs.Glob` and `template.ParseFS` to load templates from the embedded filesystem at startup. Edit files under `ui/html/` and rebuild.
-
-Context & auth
-
-The project uses a typed context key in `cmd/web/context.go` to store authentication state injected by middleware and consumed by handlers.
-
-Database setup
-
-Reference the docs/setup.md file, to see how to set up the database schema. 
-
-Testing
-
-- Add package tests with `go test ./...`.
-- Prefer table-driven tests and subtests (`t.Run`) to cover edge cases.
-
-Future UI updates
-
-- Incrementally add UI features (likes, comments, profiles) once backend APIs and tests are stable.
-- Improve styling under `ui/static/css` and template partials.
+## Further details
+See `docs/setup.md` for database schema, session store table, flags/defaults, and TLS notes.

@@ -13,7 +13,7 @@ Gistbox is a small, server-rendered web app for creating and viewing short text 
 
 ## Why it exists
 - Practice the full request/response stack without heavy frameworks.
-- Explore middleware chaining, validation, sessions/flash messages, and DB-backed persistence.
+- Explore middleware chaining, authentication/authorization, form validation, sessions/flash messages, and DB-backed persistence.
 - Keep scope small (gists + expiry) to emphasize backend fundamentals.
 
 ## Stack

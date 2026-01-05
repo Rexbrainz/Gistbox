@@ -22,6 +22,8 @@ func (app *application) routes() http.Handler {
 	// file will be served (so long as it exists).
 	mux.Handle("GET /static/", http.FileServerFS(ui.Files))
 
+	mux.HandleFunc("GET /ping", ping)
+
 	// Create a new middleware chain containing the middleware specific to our
 	// dynamic application routes.
 	// Use the noSurf middleware on all the 'dynamic' routes.
